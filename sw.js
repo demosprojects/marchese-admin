@@ -3,7 +3,7 @@
 // Todo en una sola carpeta — rutas relativas al SW
 // ──────────────────────────────────────────────────────────
 
-const CACHE_NAME = "marchese-admin-v1";
+const CACHE_NAME = "marchese-admin-v2";
 
 // Rutas relativas a donde está el sw.js (misma carpeta que todo)
 const SHELL_ASSETS = [
@@ -13,8 +13,8 @@ const SHELL_ASSETS = [
   "login.js",
   "firebase-config.js",
   "manifest.json",
-  "icon-192.png",
-  "icon-512.png",
+  "launchericon-192.png",
+  "launchericon-512.png",
 ];
 
 // ── INSTALL: precachear el shell ─────────────────────────
