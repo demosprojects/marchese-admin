@@ -28,13 +28,13 @@
       "name": "Productos",
       "short_name": "Productos",
       "url": "admin.html#productos",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "launchericon-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "Consultas",
       "short_name": "Consultas",
       "url": "admin.html#consultas",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "launchericon-192x192.png", "sizes": "192x192" }]
     }
   ],
   "categories": ["business", "productivity"]
