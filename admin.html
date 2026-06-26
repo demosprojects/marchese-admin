@@ -1229,6 +1229,50 @@
             border-color: rgba(232,146,10,0.3);
             color: var(--amber);
         }
+
+        /* ── TAG PICKER (multi-select chips) ────────────────── */
+        .tag-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            padding: 0.55rem 0.6rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            min-height: 44px;
+            align-items: center;
+            transition: border-color .2s;
+        }
+        .tag-picker:focus-within { border-color: var(--amber); }
+        .tag-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.22rem 0.65rem;
+            border-radius: 99px;
+            border: 1.5px solid var(--border-light);
+            background: var(--surface-3);
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all .15s;
+            user-select: none;
+        }
+        .tag-chip:hover {
+            border-color: var(--amber);
+            color: var(--text);
+        }
+        .tag-chip.selected {
+            background: var(--amber-glow);
+            border-color: rgba(232,146,10,0.5);
+            color: var(--amber);
+        }
+        .tag-chip.selected::before {
+            content: '✓ ';
+            font-size: 0.7rem;
+        }
     </style>
 </head>
 <body>
@@ -1520,14 +1564,13 @@
                     <thead>
                         <tr>
                             <th>Imagen</th>
-                            <th>Título / Nota</th>
                             <th>Orden</th>
                             <th>Estado</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="bannersTableBody">
-                        <tr><td colspan="5"><div class="loading-state"><div class="spinner"></div><span>Cargando banners…</span></div></td></tr>
+                        <tr><td colspan="4"><div class="loading-state"><div class="spinner"></div><span>Cargando banners…</span></div></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1662,17 +1705,18 @@
             <div class="form-section">
                 <div class="form-section-title">Etiqueta y publicación</div>
                 <div class="form-grid form-grid-2">
-                    <div class="form-group">
-                        <label>Tag / Etiqueta</label>
-                        <select id="p-tag">
-                            <option value="">Sin etiqueta</option>
-                            <option value="Nuevo">Nuevo</option>
-                            <option value="Importado">Importado</option>
-                            <option value="Oferta">Oferta</option>
-                            <option value="Destacado">Destacado</option>
-                            <option value="Liquidación">Liquidación</option>
-                            <option value="Ultimas Unidades">Ultimas Unidades</option>
-                        </select>
+                    <div class="form-group span-2">
+                        <label>Tags / Etiquetas <span style="color:var(--text-muted); font-weight:400;">(podés elegir varios)</span></label>
+                        <div class="tag-picker" id="tagPicker">
+                            <button type="button" class="tag-chip" data-tag="Nuevo">Nuevo</button>
+                            <button type="button" class="tag-chip" data-tag="Importado">Importado</button>
+                            <button type="button" class="tag-chip" data-tag="Oferta">Oferta</button>
+                            <button type="button" class="tag-chip" data-tag="Destacado">Destacado</button>
+                            <button type="button" class="tag-chip" data-tag="Liquidación">Liquidación</button>
+                            <button type="button" class="tag-chip" data-tag="Ultimas Unidades">Últimas Unidades</button>
+                            <button type="button" class="tag-chip" data-tag="Remate">Remate</button>
+                        </div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:0.4rem;" id="tagPickerHint">Ningún tag seleccionado</div>
                     </div>
                     <div class="form-group">
                         <label>Orden</label>
@@ -1840,11 +1884,6 @@
                         <label style="font-size:0.72rem; color:var(--text-muted);">O pegá una URL de imagen directamente</label>
                         <input type="url" id="bn-image-url" placeholder="https://res.cloudinary.com/…" style="margin-top:0.3rem;">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Título / Nota interna</label>
-                    <input type="text" id="bn-title" placeholder="Ej: Promo mayo, Liquidación…">
-                    <span style="font-size:0.7rem; color:var(--text-muted); margin-top:0.2rem; display:block;">Solo visible en el admin, no se muestra en el sitio.</span>
                 </div>
                 <div class="form-group">
                     <label>Orden</label>
