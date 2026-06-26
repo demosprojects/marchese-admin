@@ -204,7 +204,7 @@ const SECTION_TITLES = {
   productos:      "Productos",
   categorias:     "Categorías",
   marcas:         "Marcas",
-  banners:        "Banners publicitarios",
+  banners:        "Publicidad",
   consultas:      "Consultas",
   configuracion:  "Configuración",
 };
