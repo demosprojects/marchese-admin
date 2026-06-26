@@ -63,7 +63,7 @@ let prodSearch         = "";
 let prodFilterCat      = "";
 let prodFilterMarca    = "";
 let prodFilterActive   = "";
-let prodFilterTag      = "";
+let prodFilterTag      = ""; // filtro del toolbar (un tag a la vez)
 let catSearch          = "";
 let marcaSearch        = "";
 let consultaFilter     = "all";
@@ -394,6 +394,43 @@ pImageUrl.addEventListener("input", debounce(() => {
   }
 }, 400));
 
+
+// ──────────────────────────────────────────────────────────
+// TAG PICKER — selector de tags múltiples
+// ──────────────────────────────────────────────────────────
+
+function getSelectedTags() {
+  return Array.from(document.querySelectorAll("#tagPicker .tag-chip.selected"))
+    .map(el => el.dataset.tag);
+}
+
+function setSelectedTags(tagsArray) {
+  tagsArray = tagsArray || [];
+  document.querySelectorAll("#tagPicker .tag-chip").forEach(function(chip) {
+    chip.classList.toggle("selected", tagsArray.includes(chip.dataset.tag));
+  });
+  updateTagPickerHint();
+}
+
+function updateTagPickerHint() {
+  var selected = getSelectedTags();
+  var hint = document.getElementById("tagPickerHint");
+  if (!hint) return;
+  hint.textContent = selected.length === 0
+    ? "Ningún tag seleccionado"
+    : "Seleccionados: " + selected.join(", ");
+}
+
+var tagPickerEl = document.getElementById("tagPicker");
+if (tagPickerEl) {
+  tagPickerEl.addEventListener("click", function(e) {
+    var chip = e.target.closest(".tag-chip");
+    if (!chip) return;
+    chip.classList.toggle("selected");
+    updateTagPickerHint();
+  });
+}
+
 // Toggle label del estado activo/inactivo
 document.getElementById("p-active").addEventListener("change", function () {
   document.getElementById("p-active-label").textContent = this.checked ? "Activo" : "Inactivo";
@@ -498,9 +535,12 @@ function renderProductos() {
   // Filtro activo/inactivo
   if (prodFilterActive === "active")   list = list.filter(p => p.active !== false);
   if (prodFilterActive === "inactive") list = list.filter(p => p.active === false);
-  // Filtro tag
+  // Filtro tag (toolbar) — soporta campo tags[] nuevo y tag string legacy
   if (prodFilterTag) {
-    list = list.filter(p => (p.tag || "") === prodFilterTag);
+    list = list.filter(p => {
+      if (Array.isArray(p.tags) && p.tags.length > 0) return p.tags.includes(prodFilterTag);
+      return (p.tag || "") === prodFilterTag;
+    });
   }
   // Búsqueda
   if (prodSearch) {
@@ -541,9 +581,12 @@ function renderProductos() {
       ? `<span class="badge badge-gray">${esc(p.category)}</span>`
       : "";
 
-    const tagBadge = p.tag
-      ? `<span class="badge badge-amber">${esc(p.tag)}</span>`
-      : "";
+    const tagBadge = (() => {
+      const tagsArr = Array.isArray(p.tags) && p.tags.length > 0
+        ? p.tags
+        : (p.tag ? [p.tag] : []);
+      return tagsArr.map(t => `<span class="badge badge-amber">${esc(t)}</span>`).join("");
+    })();
 
     const statusBadge = `<span class="badge ${isActive ? "badge-green" : "badge-red"}">${isActive ? "Activo" : "Inactivo"}</span>`;
 
@@ -665,7 +708,7 @@ function openModalNuevoProducto() {
   document.getElementById("p-name").value = "";
   document.getElementById("p-category").value = "";
   document.getElementById("p-brand").value = "";
-  document.getElementById("p-tag").value = "";
+  setSelectedTags([]);
   document.getElementById("p-order").value = "";
   document.getElementById("p-description").value = "";
   document.getElementById("p-active").checked = true;
@@ -683,7 +726,11 @@ window.editProducto = function(id) {
   editingProductId = id;
   document.getElementById("modalProductoTitle").textContent = "Editar producto";
   document.getElementById("p-name").value = p.name || "";
-  document.getElementById("p-tag").value = p.tag || "";
+  // Cargar tags: soporta array nuevo y string legacy
+  const tagsToLoad = Array.isArray(p.tags) && p.tags.length > 0
+    ? p.tags
+    : (p.tag ? [p.tag] : []);
+  setSelectedTags(tagsToLoad);
   document.getElementById("p-order").value = typeof p.order === "number" ? p.order : "";
   document.getElementById("p-description").value = p.description || "";
   document.getElementById("p-active").checked = p.active !== false;
@@ -725,7 +772,7 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
   const name = document.getElementById("p-name").value.trim();
   const category = document.getElementById("p-category").value;
   const brand = document.getElementById("p-brand").value;
-  const tag = document.getElementById("p-tag").value.trim();
+  const tags = getSelectedTags(); // array de strings
   const orderVal = document.getElementById("p-order").value;
   const description = document.getElementById("p-description").value.trim();
   const active = document.getElementById("p-active").checked;
@@ -741,7 +788,8 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
     name,
     category,
     brand,
-    tag,
+    tags,                        // array de tags nuevo
+    tag: tags[0] || "",          // compatibilidad legacy (primer tag)
     description,
     active,
     image,
@@ -1294,7 +1342,6 @@ function renderBanners() {
           : `<span style="color:var(--text-muted); font-size:0.8rem;">Sin imagen</span>`
         }
       </td>
-      <td style="font-size:0.85rem; color:var(--text-mid);">${esc(b.title || "—")}</td>
       <td style="font-size:0.85rem;">${typeof b.order === "number" ? b.order : "—"}</td>
       <td>
         <span class="badge ${b.active !== false ? 'badge-green' : 'badge-red'}">
@@ -1324,7 +1371,6 @@ function renderBanners() {
 document.getElementById("btnNuevoBanner").addEventListener("click", () => {
   editingBannerId = null;
   document.getElementById("modalBannerTitle").textContent = "Nuevo banner";
-  document.getElementById("bn-title").value = "";
   document.getElementById("bn-order").value = "";
   document.getElementById("bn-active").checked = true;
   document.getElementById("bn-active-label").textContent = "Activo";
@@ -1339,7 +1385,6 @@ window.editBanner = function(id) {
   if (!b) return;
   editingBannerId = id;
   document.getElementById("modalBannerTitle").textContent = "Editar banner";
-  document.getElementById("bn-title").value  = b.title  || "";
   document.getElementById("bn-order").value  = typeof b.order === "number" ? b.order : "";
   document.getElementById("bn-active").checked = b.active !== false;
   document.getElementById("bn-active-label").textContent = b.active !== false ? "Activo" : "Inactivo";
@@ -1362,7 +1407,6 @@ document.getElementById("btnGuardarBanner").addEventListener("click", async () =
 
   const orderVal = document.getElementById("bn-order").value;
   const data = {
-    title:    document.getElementById("bn-title").value.trim(),
     imageUrl,
     active:   document.getElementById("bn-active").checked,
     updatedAt: serverTimestamp(),
