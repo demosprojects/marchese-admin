@@ -273,8 +273,12 @@ async function uploadToCloudinary(file) {
   if (!res.ok) throw new Error("Error al subir imagen a Cloudinary");
   const data = await res.json();
 
-  // URL optimizada: formato WebP forzado, calidad automática, ancho máximo 800px
-  return data.secure_url.replace("/upload/", "/upload/f_webp,q_auto,w_800/");
+  // Construimos la URL usando el public_id en lugar de manipular secure_url.
+  // secure_url incluye /v<timestamp>/ que puede romper el replace, y el preset
+  // puede tener un formato fijo que pisa la extensión. Con public_id las
+  // transformaciones quedan siempre en el lugar correcto y el formato se fuerza.
+  const publicId = data.public_id; // ej: "marchese/abc123"
+  return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/f_webp,q_auto,w_800/${publicId}`;
 }
 
 // ──────────────────────────────────────────────────────────
