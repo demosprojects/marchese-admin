@@ -40,27 +40,38 @@
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+        html, body { height: 100%; }
+
         body {
             font-family: 'DM Sans', sans-serif;
             background: var(--bg);
             color: var(--text);
             -webkit-font-smoothing: antialiased;
             min-height: 100vh;
+            min-height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1.25rem;
+            overflow: hidden;
         }
 
         .login-card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 2.5rem 2rem;
+            padding: 2rem 1.75rem;
             width: 100%;
             max-width: 380px;
             box-shadow: var(--shadow);
             animation: fadeIn 0.4s ease-out;
+        }
+
+        @media (max-height: 640px) {
+            .login-card        { padding: 1.5rem; }
+            .logo-container    { margin-bottom: 1.25rem !important; }
+            .logo-img          { max-width: 150px !important; }
+            .form-group        { margin-bottom: 0.9rem !important; }
         }
 
         @keyframes fadeIn {
