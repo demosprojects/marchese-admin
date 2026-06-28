@@ -168,12 +168,14 @@ function openModal(id) {
   const body = el.querySelector(".modal-body");
   if (body) body.scrollTop = 0;
   lockBodyScroll();
+  document.dispatchEvent(new Event("modalOpened"));
 }
 function closeModal(id) {
   const el = document.getElementById(id);
   if (el.classList.contains("open")) {
     el.classList.remove("open");
     unlockBodyScroll();
+    document.dispatchEvent(new Event("modalClosed"));
   }
 }
 document.querySelectorAll("[data-close]").forEach(btn => {
