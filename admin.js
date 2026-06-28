@@ -742,14 +742,47 @@ document.getElementById("productosSearch").addEventListener("input", debounce(e 
   prodSearch = e.target.value.trim();
   renderProductos();
 }));
-document.getElementById("productosFilterActive").addEventListener("change", e => {
-  prodFilterActive = e.target.value;
-  renderProductos();
+
+// Toggle para los nuevos custom selects de Tag y Estado
+["productosFilterTag", "productosFilterActive"].forEach(btnId => {
+  const dropId = btnId === "productosFilterTag" ? "dropFilterTag" : "dropFilterActive";
+  document.getElementById(btnId)?.addEventListener("click", e => {
+    e.stopPropagation();
+    const drop = document.getElementById(dropId);
+    if (drop?.classList.contains("open")) {
+      closeAllCustomSelects();
+    } else {
+      openCustomSelect(btnId, dropId);
+    }
+  });
 });
-document.getElementById("productosFilterTag").addEventListener("change", e => {
-  prodFilterTag = e.target.value;
-  renderProductos();
-});
+
+// Inicializar opciones fijas de Tag y Estado
+const TAG_OPTIONS = [
+  { value: "Nuevo",            label: "Nuevo" },
+  { value: "Oferta",           label: "Oferta" },
+  { value: "Remate",           label: "Remate" },
+  { value: "Importados",       label: "Importados" },
+  { value: "Destacado",        label: "Destacado" },
+  { value: "Liquidación",      label: "Liquidación" },
+  { value: "Últimas novedades",label: "Últimas novedades" },
+];
+const ACTIVE_OPTIONS = [
+  { value: "active",   label: "Activos" },
+  { value: "inactive", label: "Inactivos" },
+];
+
+buildCustomSelect(
+  "listFilterTag", "productosFilterTag", "dropFilterTag",
+  TAG_OPTIONS, prodFilterTag, "Tag",
+  val => { prodFilterTag = val; renderProductos(); }
+);
+buildCustomSelect(
+  "listFilterActive", "productosFilterActive", "dropFilterActive",
+  ACTIVE_OPTIONS, prodFilterActive, "Estado",
+  val => { prodFilterActive = val; renderProductos(); }
+);
+
 
 // ──────────────────────────────────────────────────────────
 // CRUD: PRODUCTOS
