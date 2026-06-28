@@ -2044,11 +2044,41 @@
 <script>
   (function() {
     const btn = document.getElementById('scrollTopBtn');
+    let hideTimer = null;
+    let modalOpen = false;
+
+    function showBtn() {
+      if (modalOpen) return;
+      btn.classList.add('visible');
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => btn.classList.remove('visible'), 2500);
+    }
+
+    function hideBtn() {
+      clearTimeout(hideTimer);
+      btn.classList.remove('visible');
+    }
+
     window.addEventListener('scroll', () => {
-      btn.classList.toggle('visible', window.scrollY > 300);
+      if (window.scrollY > 300) {
+        showBtn();
+      } else {
+        hideBtn();
+      }
     }, { passive: true });
+
     btn.addEventListener('click', () => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      hideBtn();
+    });
+
+    // Ocultar cuando se abre cualquier modal, mostrar al cerrar
+    document.addEventListener('modalOpened', () => {
+      modalOpen = true;
+      hideBtn();
+    });
+    document.addEventListener('modalClosed', () => {
+      modalOpen = false;
     });
   })();
 </script>
