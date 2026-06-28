@@ -163,7 +163,10 @@ function unlockBodyScroll() {
 
 // Modal helpers
 function openModal(id) {
-  document.getElementById(id).classList.add("open");
+  const el = document.getElementById(id);
+  el.classList.add("open");
+  const body = el.querySelector(".modal-body");
+  if (body) body.scrollTop = 0;
   lockBodyScroll();
 }
 function closeModal(id) {
@@ -641,34 +644,98 @@ function renderProductos() {
 }
 
 // Selects de filtro "Marca" y "Categoría" del toolbar de productos
-function renderProductosFilterSelects() {
-  const catSel = document.getElementById("productosFilterCategoria");
-  if (catSel) {
-    catSel.innerHTML = `<option value="">Categoría</option>` +
-      allCategories.filter(c => c.active !== false).map(c =>
-        `<option value="${esc(c.name)}">${esc(c.name)}</option>`
-      ).join("");
-    catSel.value = prodFilterCat;
-  }
-  const marcaSel = document.getElementById("productosFilterMarca");
-  if (marcaSel) {
-    marcaSel.innerHTML = `<option value="">Marca</option>` +
-      allBrands.filter(b => b.active !== false).map(b =>
-        `<option value="${esc(b.name)}">${esc(b.name)}</option>`
-      ).join("");
-    marcaSel.value = prodFilterMarca;
-  }
+// ── CUSTOM SELECT helpers ────────────────────────────────
+function buildCustomSelect(listId, btnId, dropId, items, currentValue, placeholder, onSelect) {
+  const list = document.getElementById(listId);
+  const btn  = document.getElementById(btnId);
+  const drop = document.getElementById(dropId);
+  if (!list || !btn || !drop) return;
+
+  list.innerHTML = [{ value: "", label: placeholder }, ...items]
+    .map(({ value, label }) =>
+      `<div class="custom-select-option${value === currentValue ? " selected" : ""}" data-value="${esc(value)}">${esc(label)}</div>`
+    ).join("");
+
+  // Actualizar label del botón
+  const active = items.find(i => i.value === currentValue);
+  btn.querySelector(".custom-select-label").textContent = active ? active.label : placeholder;
+  btn.classList.toggle("is-active", !!currentValue);
+
+  // Clicks en opciones
+  list.querySelectorAll(".custom-select-option").forEach(opt => {
+    opt.addEventListener("click", () => {
+      const val = opt.dataset.value;
+      // Actualizar label y estado del botón de inmediato
+      btn.querySelector(".custom-select-label").textContent = val ? opt.textContent : placeholder;
+      btn.classList.toggle("is-active", !!val);
+      // Marcar opción seleccionada visualmente
+      list.querySelectorAll(".custom-select-option").forEach(o => o.classList.remove("selected"));
+      opt.classList.add("selected");
+      closeAllCustomSelects();
+      onSelect(val);
+    });
+  });
 }
 
-document.getElementById("productosFilterCategoria").addEventListener("change", e => {
-  prodFilterCat = e.target.value;
-  renderProductos();
+function openCustomSelect(btnId, dropId) {
+  closeAllCustomSelects();
+  const btn  = document.getElementById(btnId);
+  const drop = document.getElementById(dropId);
+  if (!btn || !drop) return;
+  drop.classList.add("open");
+  btn.setAttribute("aria-expanded", "true");
+}
+
+function closeAllCustomSelects() {
+  document.querySelectorAll(".custom-select-dropdown.open").forEach(d => {
+    d.classList.remove("open");
+    const wrap = d.closest(".custom-select-wrap");
+    if (wrap) {
+      const btn = wrap.querySelector(".custom-select-btn");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
+// Cerrar al click fuera
+document.addEventListener("click", e => {
+  if (!e.target.closest(".custom-select-wrap")) closeAllCustomSelects();
 });
 
-document.getElementById("productosFilterMarca").addEventListener("change", e => {
-  prodFilterMarca = e.target.value;
-  renderProductos();
+// Toggle al click en botón
+["productosFilterMarca", "productosFilterCategoria"].forEach(btnId => {
+  const dropId = btnId === "productosFilterMarca" ? "dropFilterMarca" : "dropFilterCategoria";
+  document.getElementById(btnId)?.addEventListener("click", e => {
+    e.stopPropagation();
+    const drop = document.getElementById(dropId);
+    if (drop?.classList.contains("open")) {
+      closeAllCustomSelects();
+    } else {
+      openCustomSelect(btnId, dropId);
+    }
+  });
 });
+
+function renderProductosFilterSelects() {
+  buildCustomSelect(
+    "listFilterCategoria", "productosFilterCategoria", "dropFilterCategoria",
+    allCategories.filter(c => c.active !== false)
+      .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
+      .map(c => ({ value: c.name, label: c.name })),
+    prodFilterCat, "Categoría",
+    val => { prodFilterCat = val; renderProductos(); }
+  );
+  buildCustomSelect(
+    "listFilterMarca", "productosFilterMarca", "dropFilterMarca",
+    allBrands.filter(b => b.active !== false)
+      .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
+      .map(b => ({ value: b.name, label: b.name })),
+    prodFilterMarca, "Marca",
+    val => { prodFilterMarca = val; renderProductos(); }
+  );
+}
+
+
 
 // Búsqueda y filtro activo
 document.getElementById("productosSearch").addEventListener("input", debounce(e => {
@@ -831,7 +898,9 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
 function renderCategorias() {
   const tbody = document.getElementById("categoriasTableBody");
   const q = normalize(catSearch);
-  let list = allCategories.filter(c => !q || normalize(c.name || "").includes(q));
+  let list = allCategories
+    .filter(c => !q || normalize(c.name || "").includes(q))
+    .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
 
   document.getElementById("categoriasCount").textContent =
     `${allCategories.length} categorías`;
@@ -974,7 +1043,9 @@ document.getElementById("btnGuardarCategoria").addEventListener("click", async (
 function renderMarcas() {
   const tbody = document.getElementById("marcasTableBody");
   const q = normalize(marcaSearch);
-  let list = allBrands.filter(b => !q || normalize(b.name || "").includes(q));
+  let list = allBrands
+    .filter(b => !q || normalize(b.name || "").includes(q))
+    .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
 
   document.getElementById("marcasCount").textContent =
     `${allBrands.length} marcas`;
