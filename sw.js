@@ -1,9 +1,8 @@
 // ──────────────────────────────────────────────────────────
-// sw.js · Service Worker · Marchese Admin PWA
-// Todo en una sola carpeta — rutas relativas al SW
+
 // ──────────────────────────────────────────────────────────
 
-const CACHE_NAME = "marchese-admin-v8";
+const CACHE_NAME = "marchese-admin-v9";
 
 // Rutas relativas a donde está el sw.js (misma carpeta que todo)
 const SHELL_ASSETS = [
