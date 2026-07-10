@@ -653,30 +653,48 @@ function buildCustomSelect(listId, btnId, dropId, items, currentValue, placehold
   const drop = document.getElementById(dropId);
   if (!list || !btn || !drop) return;
 
-  list.innerHTML = [{ value: "", label: placeholder }, ...items]
-    .map(({ value, label }) =>
-      `<div class="custom-select-option${value === currentValue ? " selected" : ""}" data-value="${esc(value)}">${esc(label)}</div>`
-    ).join("");
+  const allItems = [{ value: "", label: placeholder }, ...items];
+  const searchInput = drop.querySelector(".custom-select-search input");
+
+  function renderOptions(filterText = "") {
+    const q = normalize(filterText.trim());
+    const filtered = q
+      ? allItems.filter(i => i.value === "" || normalize(i.label).includes(q))
+      : allItems;
+
+    list.innerHTML = filtered.length
+      ? filtered.map(({ value, label }) =>
+          `<div class="custom-select-option${value === currentValue ? " selected" : ""}" data-value="${esc(value)}">${esc(label)}</div>`
+        ).join("")
+      : `<div class="custom-select-empty">Sin resultados</div>`;
+
+    list.querySelectorAll(".custom-select-option").forEach(opt => {
+      opt.addEventListener("click", () => {
+        const val = opt.dataset.value;
+        // Actualizar label y estado del botón de inmediato
+        btn.querySelector(".custom-select-label").textContent = val ? opt.textContent : placeholder;
+        btn.classList.toggle("is-active", !!val);
+        // Marcar opción seleccionada visualmente
+        list.querySelectorAll(".custom-select-option").forEach(o => o.classList.remove("selected"));
+        opt.classList.add("selected");
+        closeAllCustomSelects();
+        onSelect(val);
+      });
+    });
+  }
+
+  renderOptions();
 
   // Actualizar label del botón
   const active = items.find(i => i.value === currentValue);
   btn.querySelector(".custom-select-label").textContent = active ? active.label : placeholder;
   btn.classList.toggle("is-active", !!currentValue);
 
-  // Clicks en opciones
-  list.querySelectorAll(".custom-select-option").forEach(opt => {
-    opt.addEventListener("click", () => {
-      const val = opt.dataset.value;
-      // Actualizar label y estado del botón de inmediato
-      btn.querySelector(".custom-select-label").textContent = val ? opt.textContent : placeholder;
-      btn.classList.toggle("is-active", !!val);
-      // Marcar opción seleccionada visualmente
-      list.querySelectorAll(".custom-select-option").forEach(o => o.classList.remove("selected"));
-      opt.classList.add("selected");
-      closeAllCustomSelects();
-      onSelect(val);
-    });
-  });
+  // Buscador dentro del dropdown (si existe)
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.oninput = () => renderOptions(searchInput.value);
+  }
 }
 
 function openCustomSelect(btnId, dropId) {
@@ -686,6 +704,14 @@ function openCustomSelect(btnId, dropId) {
   if (!btn || !drop) return;
   drop.classList.add("open");
   btn.setAttribute("aria-expanded", "true");
+
+  // Si el dropdown tiene buscador, limpiarlo, mostrar todas las opciones y enfocarlo
+  const searchInput = drop.querySelector(".custom-select-search input");
+  if (searchInput) {
+    searchInput.value = "";
+    searchInput.dispatchEvent(new Event("input"));
+    setTimeout(() => searchInput.focus(), 30);
+  }
 }
 
 function closeAllCustomSelects() {
@@ -707,6 +733,20 @@ document.addEventListener("click", e => {
 // Toggle al click en botón
 ["productosFilterMarca", "productosFilterCategoria"].forEach(btnId => {
   const dropId = btnId === "productosFilterMarca" ? "dropFilterMarca" : "dropFilterCategoria";
+  document.getElementById(btnId)?.addEventListener("click", e => {
+    e.stopPropagation();
+    const drop = document.getElementById(dropId);
+    if (drop?.classList.contains("open")) {
+      closeAllCustomSelects();
+    } else {
+      openCustomSelect(btnId, dropId);
+    }
+  });
+});
+
+// Toggle al click en botón (Categoría / Marca dentro del modal de producto)
+["productCategoriaBtn", "productMarcaBtn"].forEach(btnId => {
+  const dropId = btnId === "productCategoriaBtn" ? "dropProductCategoria" : "dropProductMarca";
   document.getElementById(btnId)?.addEventListener("click", e => {
     e.stopPropagation();
     const drop = document.getElementById(dropId);
@@ -791,21 +831,29 @@ buildCustomSelect(
 // ──────────────────────────────────────────────────────────
 
 function refreshCategorySelects() {
-  const sel = document.getElementById("p-category");
-  const current = sel.value;
-  sel.innerHTML = `<option value="">Seleccionar…</option>` +
-    allCategories.filter(c => c.active !== false).map(c =>
-      `<option value="${esc(c.name)}" ${c.name === current ? "selected" : ""}>${esc(c.name)}</option>`
-    ).join("");
+  const hidden = document.getElementById("p-category");
+  const current = hidden.value;
+  buildCustomSelect(
+    "listProductCategoria", "productCategoriaBtn", "dropProductCategoria",
+    allCategories.filter(c => c.active !== false)
+      .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
+      .map(c => ({ value: c.name, label: c.name })),
+    current, "Seleccionar…",
+    val => { hidden.value = val; }
+  );
 }
 
 function refreshBrandSelects() {
-  const sel = document.getElementById("p-brand");
-  const current = sel.value;
-  sel.innerHTML = `<option value="">Sin marca</option>` +
-    allBrands.filter(b => b.active !== false).map(b =>
-      `<option value="${esc(b.name)}" ${b.name === current ? "selected" : ""}>${esc(b.name)}</option>`
-    ).join("");
+  const hidden = document.getElementById("p-brand");
+  const current = hidden.value;
+  buildCustomSelect(
+    "listProductMarca", "productMarcaBtn", "dropProductMarca",
+    allBrands.filter(b => b.active !== false)
+      .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
+      .map(b => ({ value: b.name, label: b.name })),
+    current, "Sin marca",
+    val => { hidden.value = val; }
+  );
 }
 
 function openModalNuevoProducto() {
@@ -842,10 +890,10 @@ window.editProducto = function(id) {
   document.getElementById("p-active").checked = p.active !== false;
   document.getElementById("p-active-label").textContent = p.active !== false ? "Activo" : "Inactivo";
   resetImageArea();
-  refreshCategorySelects();
-  refreshBrandSelects();
   document.getElementById("p-category").value = p.category || "";
   document.getElementById("p-brand").value = p.brand || "";
+  refreshCategorySelects();
+  refreshBrandSelects();
   if (p.image) setImagePreview(p.image);
   openModal("modalProducto");
 };
@@ -888,7 +936,7 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
   const image = urlField || currentImageUrl || "";
 
   if (!name) { toast("El nombre es obligatorio", "error"); document.getElementById("p-name").focus(); return; }
-  if (!category) { toast("Seleccioná una categoría", "error"); document.getElementById("p-category").focus(); return; }
+  if (!category) { toast("Seleccioná una categoría", "error"); document.getElementById("productCategoriaBtn").focus(); return; }
 
   const data = {
     name,
