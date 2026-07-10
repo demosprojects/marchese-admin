@@ -234,8 +234,8 @@
         /* ── TOPBAR ─────────────────────────────────────────── */
         .topbar {
             position: sticky; top: 0; z-index: 30;
-            background: rgba(255,255,255,0.85);
-            backdrop-filter: blur(14px);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(6px);
             border-bottom: 1px solid var(--border);
             padding: 0 2rem;
             height: 60px;
@@ -394,7 +394,8 @@
             top: calc(100% + 5px);
             left: 0;
             min-width: 100%;
-            max-width: 220px;
+            max-width: 260px;
+            width: max-content;
             background: var(--surface-2);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-sm);
@@ -435,6 +436,75 @@
             color: var(--amber);
             background: var(--amber-glow);
         }
+        .custom-select-empty {
+            padding: 0.65rem 0.85rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+        }
+
+        /* Buscador dentro del dropdown (marcas / categorías) */
+        .custom-select-search {
+            position: sticky;
+            top: 0;
+            background: var(--surface-2);
+            border-bottom: 1px solid var(--border);
+            padding: 0.5rem;
+            z-index: 1;
+        }
+        .custom-select-search-inner {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.65rem;
+            transition: border-color .2s;
+        }
+        .custom-select-search-inner:focus-within { border-color: var(--amber); }
+        .custom-select-search-inner svg {
+            flex-shrink: 0;
+            color: var(--text-muted);
+        }
+        .custom-select-search-inner:focus-within svg { color: var(--amber); }
+        .custom-select-search input {
+            flex: 1;
+            min-width: 0;
+            width: 100%;
+            background: transparent;
+            border: none;
+            padding: 0;
+            margin: 0;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            outline: none;
+        }
+        .custom-select-search input::placeholder { color: var(--text-muted); }
+
+        /* Variante de custom-select para usar dentro de formularios (modal),
+           reemplazando a los <select> nativos */
+        .custom-select-wrap-full { display: block; width: 100%; }
+        .custom-select-wrap-full .custom-select-dropdown { max-width: none; width: 100%; }
+        .custom-select-btn.form-select {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem 0.85rem;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 400;
+            outline: none;
+            cursor: pointer;
+            transition: border-color .2s;
+            width: 100%;
+            min-width: 0;
+        }
+        .custom-select-btn.form-select:not(.is-active) .custom-select-label { color: var(--text-muted); }
+        .custom-select-btn.form-select[aria-expanded="true"] { border-color: var(--amber); }
+        .custom-select-btn.form-select.input-error { border-color: var(--red); }
 
         /* ── BUTTONS ────────────────────────────────────────── */
         .btn {
@@ -615,8 +685,7 @@
         /* ── MODAL ──────────────────────────────────────────── */
         .modal-overlay {
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.72);
-            backdrop-filter: blur(6px);
+            background: rgba(15,13,10,0.82);
             z-index: 100;
             display: none;
             align-items: center;
@@ -635,7 +704,7 @@
             max-height: min(88vh, 760px);
             display: flex;
             flex-direction: column;
-            box-shadow: 0 32px 80px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
             overflow: hidden;
         }
         .modal-lg { max-width: 680px; }
@@ -872,8 +941,7 @@
         /* ── CONFIRM DIALOG ─────────────────────────────────── */
         .confirm-overlay {
             position: fixed; inset: 0;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(4px);
+            background: rgba(15,13,10,0.75);
             z-index: 300;
             display: none; align-items: center; justify-content: center;
         }
@@ -1487,6 +1555,12 @@
                         <svg class="custom-select-arrow" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     <div class="custom-select-dropdown" id="dropFilterMarca" role="listbox">
+                        <div class="custom-select-search">
+                            <div class="custom-select-search-inner">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+                                <input type="text" id="searchFilterMarca" placeholder="Buscar marca…" autocomplete="off">
+                            </div>
+                        </div>
                         <div class="custom-select-list" id="listFilterMarca"></div>
                     </div>
                 </div>
@@ -1496,6 +1570,12 @@
                         <svg class="custom-select-arrow" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </button>
                     <div class="custom-select-dropdown" id="dropFilterCategoria" role="listbox">
+                        <div class="custom-select-search">
+                            <div class="custom-select-search-inner">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+                                <input type="text" id="searchFilterCategoria" placeholder="Buscar categoría…" autocomplete="off">
+                            </div>
+                        </div>
                         <div class="custom-select-list" id="listFilterCategoria"></div>
                     </div>
                 </div>
@@ -1745,15 +1825,41 @@
                     </div>
                     <div class="form-group">
                         <label>Categoría <span class="required">*</span></label>
-                        <select id="p-category">
-                            <option value="">Seleccionar…</option>
-                        </select>
+                        <input type="hidden" id="p-category">
+                        <div class="custom-select-wrap custom-select-wrap-full" id="wrapProductCategoria">
+                            <button type="button" class="custom-select-btn form-select" id="productCategoriaBtn" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="custom-select-label">Seleccionar…</span>
+                                <svg class="custom-select-arrow" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div class="custom-select-dropdown" id="dropProductCategoria" role="listbox">
+                                <div class="custom-select-search">
+                                    <div class="custom-select-search-inner">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+                                        <input type="text" id="searchProductCategoria" placeholder="Buscar categoría…" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="custom-select-list" id="listProductCategoria"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Marca</label>
-                        <select id="p-brand">
-                            <option value="">Sin marca</option>
-                        </select>
+                        <input type="hidden" id="p-brand">
+                        <div class="custom-select-wrap custom-select-wrap-full" id="wrapProductMarca">
+                            <button type="button" class="custom-select-btn form-select" id="productMarcaBtn" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="custom-select-label">Sin marca</span>
+                                <svg class="custom-select-arrow" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div class="custom-select-dropdown" id="dropProductMarca" role="listbox">
+                                <div class="custom-select-search">
+                                    <div class="custom-select-search-inner">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="m21 21-4.35-4.35"/></svg>
+                                        <input type="text" id="searchProductMarca" placeholder="Buscar marca…" autocomplete="off">
+                                    </div>
+                                </div>
+                                <div class="custom-select-list" id="listProductMarca"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-group span-2">
                         <label>Descripción</label>
