@@ -764,16 +764,16 @@ function renderProductosFilterSelects() {
     allCategories.filter(c => c.active !== false)
       .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
       .map(c => ({ value: c.name, label: c.name })),
-    prodFilterCat, "Categoría",
-    val => { prodFilterCat = val; renderProductos(); }
+    prodFilterCat, "Todas las categorías",
+    val => { prodFilterCat = val; renderProductos(); renderProductosFilterSelects(); }
   );
   buildCustomSelect(
     "listFilterMarca", "productosFilterMarca", "dropFilterMarca",
     allBrands.filter(b => b.active !== false)
       .slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"))
       .map(b => ({ value: b.name, label: b.name })),
-    prodFilterMarca, "Marca",
-    val => { prodFilterMarca = val; renderProductos(); }
+    prodFilterMarca, "Todas las marcas",
+    val => { prodFilterMarca = val; renderProductos(); renderProductosFilterSelects(); }
   );
 }
 
@@ -814,16 +814,19 @@ const ACTIVE_OPTIONS = [
   { value: "inactive", label: "Inactivos" },
 ];
 
-buildCustomSelect(
-  "listFilterTag", "productosFilterTag", "dropFilterTag",
-  TAG_OPTIONS, prodFilterTag, "Tag",
-  val => { prodFilterTag = val; renderProductos(); }
-);
-buildCustomSelect(
-  "listFilterActive", "productosFilterActive", "dropFilterActive",
-  ACTIVE_OPTIONS, prodFilterActive, "Estado",
-  val => { prodFilterActive = val; renderProductos(); }
-);
+function renderProductosFilterFijos() {
+  buildCustomSelect(
+    "listFilterTag", "productosFilterTag", "dropFilterTag",
+    TAG_OPTIONS, prodFilterTag, "Tag",
+    val => { prodFilterTag = val; renderProductos(); renderProductosFilterFijos(); }
+  );
+  buildCustomSelect(
+    "listFilterActive", "productosFilterActive", "dropFilterActive",
+    ACTIVE_OPTIONS, prodFilterActive, "Estado",
+    val => { prodFilterActive = val; renderProductos(); renderProductosFilterFijos(); }
+  );
+}
+renderProductosFilterFijos();
 
 
 // ──────────────────────────────────────────────────────────
