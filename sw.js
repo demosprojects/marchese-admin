@@ -2,7 +2,7 @@
 
 // ──────────────────────────────────────────────────────────
 
-const CACHE_NAME = "marchese-admin-v1.4";
+const CACHE_NAME = "marchese-admin-v1.5";
 
 // Rutas relativas a donde está el sw.js (misma carpeta que todo)
 const SHELL_ASSETS = [
