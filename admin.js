@@ -440,6 +440,52 @@ if (tagPickerEl) {
   });
 }
 
+// ──────────────────────────────────────────────────────────
+// SALE MODE PICKER — modalidad de venta (unidad / caja)
+// ──────────────────────────────────────────────────────────
+
+function getSelectedSaleModes() {
+  return Array.from(document.querySelectorAll("#saleModePicker .tag-chip.selected"))
+    .map(el => el.dataset.mode);
+}
+
+function setSelectedSaleModes(modesArray) {
+  modesArray = modesArray && modesArray.length > 0 ? modesArray : ["unidad", "caja"];
+  document.querySelectorAll("#saleModePicker .tag-chip").forEach(function(chip) {
+    chip.classList.toggle("selected", modesArray.includes(chip.dataset.mode));
+  });
+  updateSaleModePickerHint();
+}
+
+function updateSaleModePickerHint() {
+  var hint = document.getElementById("saleModePickerHint");
+  if (!hint) return;
+  var modes = getSelectedSaleModes();
+  if (modes.length === 2) {
+    hint.textContent = "El cliente mayorista va a poder elegir unidad o caja";
+  } else if (modes.length === 1 && modes[0] === "caja") {
+    hint.textContent = "Este producto se venderá únicamente por caja";
+  } else if (modes.length === 1 && modes[0] === "unidad") {
+    hint.textContent = "Este producto se venderá únicamente por unidad";
+  } else {
+    hint.textContent = "Seleccioná al menos una modalidad";
+  }
+}
+
+var saleModePickerEl = document.getElementById("saleModePicker");
+if (saleModePickerEl) {
+  saleModePickerEl.addEventListener("click", function(e) {
+    var chip = e.target.closest(".tag-chip");
+    if (!chip) return;
+    var modes = getSelectedSaleModes();
+    var isSelected = chip.classList.contains("selected");
+    // No permitir dejar el producto sin ninguna modalidad seleccionada
+    if (isSelected && modes.length <= 1) return;
+    chip.classList.toggle("selected");
+    updateSaleModePickerHint();
+  });
+}
+
 // Toggle label del estado activo/inactivo
 document.getElementById("p-active").addEventListener("change", function () {
   document.getElementById("p-active-label").textContent = this.checked ? "Activo" : "Inactivo";
@@ -866,6 +912,7 @@ function openModalNuevoProducto() {
   document.getElementById("p-category").value = "";
   document.getElementById("p-brand").value = "";
   setSelectedTags([]);
+  setSelectedSaleModes(["unidad", "caja"]);
   document.getElementById("p-order").value = "";
   document.getElementById("p-description").value = "";
   document.getElementById("p-active").checked = true;
@@ -888,6 +935,12 @@ window.editProducto = function(id) {
     ? p.tags
     : (p.tag ? [p.tag] : []);
   setSelectedTags(tagsToLoad);
+  // Compatibilidad: productos creados antes de esta función no tienen
+  // "saleModes" guardado, así que se muestran ambas modalidades habilitadas.
+  const saleModesToLoad = Array.isArray(p.saleModes) && p.saleModes.length > 0
+    ? p.saleModes
+    : ["unidad", "caja"];
+  setSelectedSaleModes(saleModesToLoad);
   document.getElementById("p-order").value = typeof p.order === "number" ? p.order : "";
   document.getElementById("p-description").value = p.description || "";
   document.getElementById("p-active").checked = p.active !== false;
@@ -930,6 +983,7 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
   const category = document.getElementById("p-category").value;
   const brand = document.getElementById("p-brand").value;
   const tags = getSelectedTags(); // array de strings
+  const saleModes = getSelectedSaleModes(); // ["unidad"], ["caja"] o ambos
   const orderVal = document.getElementById("p-order").value;
   const description = document.getElementById("p-description").value.trim();
   const active = document.getElementById("p-active").checked;
@@ -940,6 +994,7 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
 
   if (!name) { toast("El nombre es obligatorio", "error"); document.getElementById("p-name").focus(); return; }
   if (!category) { toast("Seleccioná una categoría", "error"); document.getElementById("productCategoriaBtn").focus(); return; }
+  if (saleModes.length === 0) { toast("Seleccioná al menos una modalidad de venta", "error"); return; }
 
   const data = {
     name,
@@ -947,6 +1002,7 @@ document.getElementById("btnGuardarProducto").addEventListener("click", async ()
     brand,
     tags,                        // array de tags nuevo
     tag: tags[0] || "",          // compatibilidad legacy (primer tag)
+    saleModes,                   // ["unidad"], ["caja"] o ambos: qué puede elegir el mayorista
     description,
     active,
     image,
