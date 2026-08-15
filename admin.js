@@ -56,6 +56,7 @@ const CLOUDINARY_UPLOAD_PRESET = "marchese"; // ← reemplazar (unsigned preset)
 let allProducts   = [];
 let allCategories = [];
 let allBrands     = [];
+let allTags       = [];
 let allConsultas  = [];
 
 // Filtros activos
@@ -66,15 +67,48 @@ let prodFilterActive   = "";
 let prodFilterTag      = ""; // filtro del toolbar (un tag a la vez)
 let catSearch          = "";
 let marcaSearch        = "";
+let tagCatalogSearch   = "";
 let consultaFilter     = "all";
 
 // Id en edición (null = nuevo)
 let editingProductId  = null;
 let editingCatId      = null;
 let editingMarcaId    = null;
+let editingTagId      = null;
 
 // Imagen subida actual (URL Cloudinary o URL manual)
 let currentImageUrl   = "";
+
+// ──────────────────────────────────────────────────────────
+// SEED INICIAL DE TAGS (una sola vez, migración de los tags
+// que antes estaban hardcodeados en el código)
+// ──────────────────────────────────────────────────────────
+const DEFAULT_TAGS = ["Nuevo", "Importado", "Oferta", "Destacado", "Liquidación", "Ultimas Unidades", "Remate"];
+let _tagsSeedChecked = false;
+
+async function seedDefaultTagsIfNeeded(currentTagsCount) {
+  if (_tagsSeedChecked) return;
+  _tagsSeedChecked = true;
+  try {
+    const seedFlagRef = doc(db, "meta", "tagsSeed");
+    const seedFlagSnap = await getDoc(seedFlagRef);
+    if (seedFlagSnap.exists()) return; // ya se sembró alguna vez, no repetir
+    if (currentTagsCount > 0) {
+      // Ya hay tags cargados (creados a mano) — solo marcar como sembrado.
+      await setDoc(seedFlagRef, { done: true, at: serverTimestamp() });
+      return;
+    }
+    const batch = writeBatch(db);
+    DEFAULT_TAGS.forEach((name, i) => {
+      const ref = doc(collection(db, "tags"));
+      batch.set(ref, { name, order: i, active: true, createdAt: serverTimestamp() });
+    });
+    batch.set(seedFlagRef, { done: true, at: serverTimestamp() });
+    await batch.commit();
+  } catch (err) {
+    console.error("Error sembrando tags por defecto:", err);
+  }
+}
 
 // ──────────────────────────────────────────────────────────
 // UTILIDADES
@@ -209,6 +243,7 @@ const SECTION_TITLES = {
   productos:      "Productos",
   categorias:     "Categorías",
   marcas:         "Marcas",
+  tags:           "Tags",
   banners:        "Publicidad",
   consultas:      "Consultas",
   configuracion:  "Configuración",
@@ -408,6 +443,24 @@ pImageUrl.addEventListener("input", debounce(() => {
 // TAG PICKER — selector de tags múltiples
 // ──────────────────────────────────────────────────────────
 
+function renderTagPicker() {
+  const picker = document.getElementById("tagPicker");
+  if (!picker) return;
+  const previouslySelected = getSelectedTags();
+  const activeTags = allTags
+    .filter(t => t.active !== false)
+    .slice()
+    .sort((a, b) => {
+      const oa = typeof a.order === "number" ? a.order : 9999;
+      const ob = typeof b.order === "number" ? b.order : 9999;
+      return oa - ob || (a.name || "").localeCompare(b.name || "", "es");
+    });
+  picker.innerHTML = activeTags
+    .map(t => `<button type="button" class="tag-chip" data-tag="${esc(t.name)}">${esc(t.name)}</button>`)
+    .join("");
+  setSelectedTags(previouslySelected);
+}
+
 function getSelectedTags() {
   return Array.from(document.querySelectorAll("#tagPicker .tag-chip.selected"))
     .map(el => el.dataset.tag);
@@ -530,6 +583,21 @@ function initListeners() {
     renderProductosFilterSelects();
   });
 
+  // Tags
+  onSnapshot(collection(db, "tags"), (snap) => {
+    allTags = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => {
+        const oa = typeof a.order === "number" ? a.order : 9999;
+        const ob = typeof b.order === "number" ? b.order : 9999;
+        return oa - ob || (a.name || "").localeCompare(b.name || "", "es");
+      });
+    renderTags();
+    renderTagPicker();
+    renderProductosFilterFijos();
+    seedDefaultTagsIfNeeded(snap.docs.length);
+  });
+
   // Productos
   onSnapshot(collection(db, "products"), (snap) => {
     allProducts = snap.docs
@@ -540,9 +608,10 @@ function initListeners() {
         return oa - ob || (a.name || "").localeCompare(b.name || "", "es");
       });
     renderProductos();
-    // Re-renderizar categorías y marcas para actualizar el conteo de productos
+    // Re-renderizar categorías, marcas y tags para actualizar el conteo de productos
     renderCategorias();
     renderMarcas();
+    renderTags();
   });
 
   // Consultas
@@ -845,25 +914,29 @@ document.getElementById("productosSearch").addEventListener("input", debounce(e 
   });
 });
 
-// Inicializar opciones fijas de Tag y Estado
-const TAG_OPTIONS = [
-  { value: "Nuevo",            label: "Nuevo" },
-  { value: "Oferta",           label: "Oferta" },
-  { value: "Remate",           label: "Remate" },
-  { value: "Importados",       label: "Importados" },
-  { value: "Destacado",        label: "Destacado" },
-  { value: "Liquidación",      label: "Liquidación" },
-  { value: "Últimas novedades",label: "Últimas novedades" },
-];
+// Opciones fijas de Estado (las de Tag ahora se arman dinámicamente
+// a partir de la colección "tags" de Firestore, ver getTagFilterOptions())
 const ACTIVE_OPTIONS = [
   { value: "active",   label: "Activos" },
   { value: "inactive", label: "Inactivos" },
 ];
 
+function getTagFilterOptions() {
+  return allTags
+    .filter(t => t.active !== false)
+    .slice()
+    .sort((a, b) => {
+      const oa = typeof a.order === "number" ? a.order : 9999;
+      const ob = typeof b.order === "number" ? b.order : 9999;
+      return oa - ob || (a.name || "").localeCompare(b.name || "", "es");
+    })
+    .map(t => ({ value: t.name, label: t.name }));
+}
+
 function renderProductosFilterFijos() {
   buildCustomSelect(
     "listFilterTag", "productosFilterTag", "dropFilterTag",
-    TAG_OPTIONS, prodFilterTag, "Tag",
+    getTagFilterOptions(), prodFilterTag, "Tag",
     val => { prodFilterTag = val; renderProductos(); renderProductosFilterFijos(); }
   );
   buildCustomSelect(
@@ -1313,6 +1386,161 @@ document.getElementById("btnGuardarMarca").addEventListener("click", async () =>
       toast("Marca creada");
     }
     closeModal("modalMarca");
+  } catch (err) {
+    console.error(err);
+    toast("Error al guardar", "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Guardar`;
+  }
+});
+
+// ──────────────────────────────────────────────────────────
+// RENDER: TAGS
+// ──────────────────────────────────────────────────────────
+
+function tagProductsCount(tagName) {
+  return allProducts.filter(p =>
+    (Array.isArray(p.tags) && p.tags.includes(tagName)) || p.tag === tagName
+  ).length;
+}
+
+function renderTags() {
+  const tbody = document.getElementById("tagsTableBody");
+  const q = normalize(tagCatalogSearch);
+  let list = allTags
+    .filter(t => !q || normalize(t.name || "").includes(q))
+    .slice()
+    .sort((a, b) => {
+      const oa = typeof a.order === "number" ? a.order : 9999;
+      const ob = typeof b.order === "number" ? b.order : 9999;
+      return oa - ob || (a.name || "").localeCompare(b.name || "", "es");
+    });
+
+  document.getElementById("tagsCount").textContent =
+    `${allTags.length} tag${allTags.length !== 1 ? "s" : ""}`;
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p>No hay tags${q ? " que coincidan" : ""}</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(t => {
+    const isActive = t.active !== false;
+    const productsCount = tagProductsCount(t.name);
+    return `<tr>
+      <td style="font-weight:600"><span class="badge badge-amber">${esc(t.name)}</span></td>
+      <td style="color:var(--text-muted); font-size:0.82rem">${typeof t.order === "number" ? t.order : "—"}</td>
+      <td><span class="badge badge-gray">${productsCount} producto${productsCount !== 1 ? "s" : ""}</span></td>
+      <td><span class="badge ${isActive ? "badge-green" : "badge-red"}">${isActive ? "Activo" : "Inactivo"}</span></td>
+      <td>
+        <div class="td-actions">
+          <button class="btn btn-ghost btn-icon" title="Editar" onclick="editTag('${t.id}')">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+          <button class="btn btn-ghost btn-icon" title="${isActive ? "Desactivar" : "Activar"}" onclick="toggleTagActive('${t.id}', ${isActive})">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              ${isActive
+                ? '<path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>'
+                : '<path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>'
+              }
+            </svg>
+          </button>
+          <button class="btn btn-danger btn-icon" title="Eliminar" onclick="deleteTag('${t.id}', '${esc(t.name)}', ${productsCount})">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+        </div>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+document.getElementById("tagsSearch").addEventListener("input", debounce(e => {
+  tagCatalogSearch = e.target.value.trim();
+  renderTags();
+}));
+
+// ──────────────────────────────────────────────────────────
+// CRUD: TAGS
+// ──────────────────────────────────────────────────────────
+
+document.getElementById("btnNuevoTag").addEventListener("click", () => {
+  editingTagId = null;
+  document.getElementById("modalTagTitle").textContent = "Nuevo tag";
+  document.getElementById("t-name").value = "";
+  document.getElementById("t-order").value = "";
+  document.getElementById("t-active").checked = true;
+  document.getElementById("t-active-label").textContent = "Activo";
+  openModal("modalTag");
+  setTimeout(() => document.getElementById("t-name").focus(), 100);
+});
+
+window.editTag = function(id) {
+  const t = allTags.find(x => x.id === id);
+  if (!t) return;
+  editingTagId = id;
+  document.getElementById("modalTagTitle").textContent = "Editar tag";
+  document.getElementById("t-name").value = t.name || "";
+  document.getElementById("t-order").value = typeof t.order === "number" ? t.order : "";
+  document.getElementById("t-active").checked = t.active !== false;
+  document.getElementById("t-active-label").textContent = t.active !== false ? "Activo" : "Inactivo";
+  openModal("modalTag");
+};
+
+window.toggleTagActive = async function(id, isActive) {
+  try {
+    await updateDoc(doc(db, "tags", id), { active: !isActive });
+    toast(isActive ? "Tag desactivado" : "Tag activado");
+  } catch (err) {
+    toast("Error al actualizar", "error");
+  }
+};
+
+window.deleteTag = async function(id, name, productsCount) {
+  const desc = productsCount > 0
+    ? `Tiene ${productsCount} producto${productsCount !== 1 ? "s" : ""} con este tag asignado. Los productos no se eliminarán, pero quedarán sin ese tag hasta que lo reasignes.`
+    : "Esta acción no se puede deshacer.";
+  const ok = await confirm(`¿Eliminar tag "${name}"?`, desc);
+  if (!ok) return;
+  try {
+    await deleteDoc(doc(db, "tags", id));
+    toast("Tag eliminado");
+  } catch (err) {
+    toast("Error al eliminar", "error");
+  }
+};
+
+document.getElementById("btnGuardarTag").addEventListener("click", async () => {
+  const name = document.getElementById("t-name").value.trim();
+  const orderVal = document.getElementById("t-order").value;
+  const active = document.getElementById("t-active").checked;
+
+  if (!name) { toast("El nombre es obligatorio", "error"); document.getElementById("t-name").focus(); return; }
+
+  const dup = allTags.find(t => t.id !== editingTagId && normalize(t.name) === normalize(name));
+  if (dup) { toast("Ya existe un tag con ese nombre", "warn"); return; }
+
+  const data = {
+    name,
+    active,
+    ...(orderVal !== "" ? { order: parseInt(orderVal, 10) } : {}),
+    updatedAt: serverTimestamp(),
+  };
+
+  const btn = document.getElementById("btnGuardarTag");
+  btn.disabled = true;
+  btn.textContent = "Guardando…";
+
+  try {
+    if (editingTagId) {
+      await updateDoc(doc(db, "tags", editingTagId), data);
+      toast("Tag actualizado");
+    } else {
+      data.createdAt = serverTimestamp();
+      await addDoc(collection(db, "tags"), data);
+      toast("Tag creado");
+    }
+    closeModal("modalTag");
   } catch (err) {
     console.error(err);
     toast("Error al guardar", "error");
